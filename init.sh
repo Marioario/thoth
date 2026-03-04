@@ -57,6 +57,7 @@ cp "$TEMPLATE_DIR/hooks/skill-evolution.ts" "$TARGET_DIR/.claude/hooks/"
 cp "$TEMPLATE_DIR/hooks/skill-evolution.sh" "$TARGET_DIR/.claude/hooks/"
 cp "$TEMPLATE_DIR/hooks/pre-pr-check.sh" "$TARGET_DIR/.claude/hooks/"
 cp "$TEMPLATE_DIR/hooks/package.json" "$TARGET_DIR/.claude/hooks/"
+cp "$TEMPLATE_DIR/hooks/.thoth-version" "$TARGET_DIR/.claude/hooks/"
 
 chmod +x "$TARGET_DIR/.claude/hooks/"*.sh
 
