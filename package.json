@@ -1,0 +1,20 @@
+{
+  "name": "@marioario/thoth",
+  "version": "0.1.0",
+  "description": "Living knowledge for your codebase. Skill activation and evolution system for Claude Code.",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/Marioario/thoth.git"
+  },
+  "publishConfig": {
+    "registry": "https://npm.pkg.github.com"
+  },
+  "license": "MIT",
+  "bin": {
+    "thoth": "./init.sh"
+  },
+  "files": [
+    "init.sh",
+    "template/**"
+  ]
+}
