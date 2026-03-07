@@ -51,21 +51,21 @@ Brief one-line description.
 What this subsystem does and why it exists.
 
 ## Architecture
-` ` `
+```
 path/to/files/
 ├── key-file.ts          # What it does
 ├── another-file.ts      # What it does
 └── types.ts
-` ` `
+```
 
 ## Key Patterns
 
 ### Pattern Name
 When to use this pattern and how.
 
-` ` `typescript
+```typescript
 // Code example
-` ` `
+```
 
 ## Key Files
 - `path/to/important.ts` - Brief description
