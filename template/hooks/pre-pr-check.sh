@@ -9,8 +9,8 @@
 # IMPORTANT FOR CLAUDE:
 # - Skills are located in .claude/skills/ directory (not frontend/src or backend/src)
 # - Skill paths in skill-rules.json are RELATIVE to .claude/skills/
-# - To run /check-skills, use the Skill tool with skill="check-skills"
-# - To bypass this hook, add "# skip-skill-check" as a bash comment in your command
+# - You MUST run /check-skills (Skill tool: skill="check-skills") BEFORE creating a PR
+# - There are NO shortcuts or bypasses. You must complete the skill check first.
 #
 
 set -euo pipefail
@@ -38,7 +38,7 @@ if echo "$COMMAND" | grep -qE "gh pr create|gh pr --create"; then
   "hookSpecificOutput": {
     "hookEventName": "PreToolUse",
     "permissionDecision": "deny",
-    "permissionDecisionReason": "⚠️ BLOCKED: Run /check-skills first before creating a PR.\n\nSteps:\n1. Use the Skill tool: skill=\"check-skills\"\n2. Review and address any skill update suggestions\n3. Then create the PR\n\nTo bypass (after running /check-skills): Include a bash comment with 'skip-skill-check' in your gh pr command.\n\nExample bypass:\n  gh pr create --title \"...\" --body \"...\" # skip-skill-check\n\nNOTE: Do NOT use --skip-skill-check as a CLI flag or environment variable. It must be a bash comment (after #)."
+    "permissionDecisionReason": "⚠️ BLOCKED: You MUST run /check-skills before creating a PR.\n\nSTEP 1 (MANDATORY — do this NOW):\n  Use the Skill tool with skill=\"check-skills\"\n  Review the output and address any skill update suggestions.\n\nSTEP 2 (ONLY after completing Step 1):\n  Re-run your gh pr create command with '# skip-skill-check' appended as a bash comment.\n  Example: gh pr create --title \"...\" --body \"...\" # skip-skill-check\n\n⛔ DO NOT skip Step 1. DO NOT append '# skip-skill-check' without completing the skill check first.\n   Using the bypass without running /check-skills is a violation of project rules.\n   If you already ran /check-skills in this conversation, you may proceed to Step 2."
   }
 }
 HOOKEOF
