@@ -16,7 +16,7 @@ Thoth gives Claude institutional memory about your codebase — architecture dec
 
 ```bash
 # Clone Thoth
-git clone https://github.com/your-org/thoth.git /tmp/thoth
+git clone https://github.com/marioario/thoth.git /tmp/thoth
 
 # From your repo root:
 cd /path/to/your-repo
