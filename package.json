@@ -1,6 +1,6 @@
 {
   "name": "@marioario/thoth",
-  "version": "0.1.0",
+  "version": "0.2.0",
   "description": "Living knowledge for your codebase. Skill activation and evolution system for Claude Code.",
   "repository": {
     "type": "git",

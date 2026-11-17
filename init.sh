@@ -61,6 +61,19 @@ cp "$TEMPLATE_DIR/hooks/.thoth-version" "$TARGET_DIR/.claude/hooks/"
 
 chmod +x "$TARGET_DIR/.claude/hooks/"*.sh
 
+# Step 3: Copy commands (always — Thoth owns these files)
+# A different file already at the target is kept as <name>.bak, so a repo's own command with the
+# same name is not lost silently.
+echo "📝 Installing commands..."
+for src in "$TEMPLATE_DIR/commands/"*.md; do
+  dest="$TARGET_DIR/.claude/commands/$(basename "$src")"
+  if [ -f "$dest" ] && ! cmp -s "$src" "$dest"; then
+    cp "$dest" "$dest.bak"
+    echo "   ⚠️  Replaced ${dest#"$TARGET_DIR"/} (previous version saved as .bak)"
+  fi
+  cp "$src" "$dest"
+done
+
 if [ "$UPDATE_ONLY" = true ]; then
   # Update mode: only reinstall dependencies and stop
   echo "📦 Updating dependencies..."
@@ -70,27 +83,23 @@ if [ "$UPDATE_ONLY" = true ]; then
 
   echo ""
   echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
-  echo "✅ Thoth engine updated!"
-  echo "   Your skill-rules.json and skill files were not modified."
+  echo "✅ Thoth engine and commands updated!"
+  echo "   Your skill-rules.json, skill files and settings.json were not modified."
   echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
   exit 0
 fi
 
-# Step 3: Copy SKILL-AUTHORING.md
+# Step 4: Copy SKILL-AUTHORING.md
 echo "📝 Installing skill authoring guide..."
 cp "$TEMPLATE_DIR/skills/SKILL-AUTHORING.md" "$TARGET_DIR/.claude/skills/"
 
-# Step 4: Copy skill-rules.json (skip if exists)
+# Step 5: Copy skill-rules.json (skip if exists)
 if [ -f "$TARGET_DIR/.claude/skills/skill-rules.json" ]; then
   echo "⏭️  skill-rules.json already exists — skipping (won't overwrite)"
 else
   echo "📝 Installing starter skill-rules.json..."
   cp "$TEMPLATE_DIR/skills/skill-rules.starter.json" "$TARGET_DIR/.claude/skills/skill-rules.json"
 fi
-
-# Step 5: Copy commands
-echo "📝 Installing commands..."
-cp "$TEMPLATE_DIR/commands/check-skills.md" "$TARGET_DIR/.claude/commands/"
 
 # Step 6: Merge hook entries into settings.json
 echo "⚙️  Configuring hooks in settings.json..."

@@ -10,7 +10,9 @@ Thoth gives Claude institutional memory about your codebase — architecture dec
 
 **Skill Evolution** — Before PRs, Thoth analyzes your branch's changes and suggests skill updates or new skills to keep documentation in sync with code.
 
-**Pre-PR Gate** — Blocks `gh pr create` until you've run `/check-skills`, ensuring skills stay current.
+**Pre-PR Gate** — Blocks `gh pr create` until you've run `/check-skills` and `/self-review`, so
+skills stay current and every PR is reviewed on the author's own Claude account before anyone
+else reads it. See [Self-review before PRs](#self-review-before-prs).
 
 ## Quick Start
 
@@ -26,9 +28,10 @@ bash /tmp/thoth/init.sh
 This will:
 1. Create `.claude/hooks/`, `.claude/skills/`, `.claude/commands/`
 2. Install the hook scripts and TypeScript engine
-3. Create a starter `skill-rules.json` (or skip if one exists)
-4. Configure hooks in `.claude/settings.json`
-5. Run `npm install` for hook dependencies
+3. Install the commands
+4. Create a starter `skill-rules.json` (or skip if one exists)
+5. Configure hooks in `.claude/settings.json`
+6. Run `npm install` for hook dependencies
 
 ## Configuration
 
@@ -114,6 +117,24 @@ See `.claude/skills/SKILL-AUTHORING.md` after installation for the full guide. I
 ## Commands
 
 - `/check-skills` — Run skill evolution analysis on current branch
+- `/self-review [base-branch]` — Review the branch in a subagent and fix what it confirms
+
+## Self-review before PRs
+
+Review work runs on each developer's own Claude account rather than on a paid review bot.
+
+Before opening a PR, the pre-PR gate makes Claude run `/self-review`. It reviews the branch's
+diff in a subagent, which doesn't see the author's reasoning, so the read isn't anchored on it.
+Claude fixes what it confirms, and declined findings go in the PR description.
+
+The subagent is a `code-reviewer` agent if one is available, otherwise a general-purpose agent
+running Claude Code's built-in `/code-review`. To use your own reviewer, put an agent named
+`code-reviewer` in `~/.claude/agents/` (just for you) or `.claude/agents/` (for the whole repo).
+Thoth doesn't install one, so `--update` never touches it.
+
+When the gate blocks `gh pr create`, Claude runs both checks and retries the command with
+`# pre-pr-checks-done` appended as a bash comment. The `# skip-skill-check` marker from earlier
+versions no longer passes the gate.
 
 ## What Gets Installed
 
@@ -132,22 +153,28 @@ See `.claude/skills/SKILL-AUTHORING.md` after installation for the full guide. I
 │   └── your-domain/           # Your skill files
 │       └── SKILL.md
 ├── commands/
-│   └── check-skills.md        # /check-skills command
+│   ├── check-skills.md        # /check-skills command
+│   └── self-review.md         # /self-review command
 └── settings.json              # Hook configuration
 ```
 
 ## Updating
 
-To update Thoth's engine files (without touching your config):
+To update Thoth's engine and commands (without touching your config):
 
 ```bash
 bash /path/to/thoth/init.sh --update
 ```
 
-This overwrites the TypeScript engine and shell wrappers but preserves your `skill-rules.json`, skill files, and `settings.json`.
+This overwrites the TypeScript engine, shell wrappers, and Thoth's commands, but preserves your
+`skill-rules.json`, skill files, and `settings.json`. A command file that differs from Thoth's
+(including your own file with the same name) is replaced, and the old one is saved next to it as
+`.bak`.
 
 ## Requirements
 
 - Node.js 18+
 - Git repository
 - Claude Code CLI
+- `jq` (without it the pre-PR gate can't read commands and lets everything through)
+- `gh` (GitHub CLI), used by `/self-review` to find the default branch
