@@ -1,0 +1,27 @@
+{
+  "hooks": {
+    "UserPromptSubmit": [
+      {
+        "hooks": [
+          {
+            "type": "command",
+            "command": "node \"${CLAUDE_PLUGIN_ROOT}/dist/skill-activation.mjs\""
+          }
+        ]
+      }
+    ],
+    "PreToolUse": [
+      {
+        "matcher": "Bash",
+        "hooks": [
+          {
+            "type": "command",
+            "if": "Bash(gh pr *)",
+            "command": "node \"${CLAUDE_PLUGIN_ROOT}/dist/pre-pr-check.mjs\"",
+            "onFailure": "block"
+          }
+        ]
+      }
+    ]
+  }
+}

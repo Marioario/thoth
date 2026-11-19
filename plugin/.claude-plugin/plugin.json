@@ -1,0 +1,9 @@
+{
+  "name": "thoth",
+  "description": "Living knowledge for your codebase: suggests the right repo skills for each prompt, keeps skills current with the code, and reviews every PR before it opens.",
+  "author": {
+    "name": "Maestro"
+  },
+  "repository": "https://github.com/Marioario/thoth",
+  "license": "MIT"
+}

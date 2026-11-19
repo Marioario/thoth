@@ -4,7 +4,7 @@ How to create and maintain skills in this codebase.
 
 ## When to Create/Update Skills
 
-Run `/check-skills` before every PR. It analyzes your changes and suggests:
+Run `/thoth:check-skills` before every PR. It analyzes your changes and suggests:
 - **UPDATE**: Add patterns to existing skill files
 - **NEW**: Create new skill files for uncovered areas
 
@@ -151,7 +151,7 @@ In `skill-rules.json`, the `config.evolutionPatterns` array defines patterns tha
 
 ## Updating Existing Skills
 
-When `/check-skills` suggests an update:
+When `/thoth:check-skills` suggests an update:
 
 1. Read the suggested skill file
 2. Add the new pattern/file reference
@@ -162,6 +162,6 @@ When `/check-skills` suggests an update:
 
 After creating/updating skills:
 
-1. Run `/check-skills` again - should show no suggestions for your changes
+1. Run `/thoth:check-skills` again - should show no suggestions for your changes
 2. Test activation: ask Claude about the topic, verify skill gets loaded
 3. Review with team if introducing major new patterns
