@@ -300,8 +300,9 @@ function getModifiedSkillFiles(baseBranch = 'main', source: ChangeSource = 'comm
             `git diff --name-only ${target}...HEAD -- .claude/skills/`,
           ];
 
-    // Union rather than first-hit: working-tree mode needs modified *and*
-    // untracked skills, and unioning the committed variants is harmless.
+    // Working-tree mode unions modified and untracked skills. Committed mode
+    // stops at the first base ref that resolves: a stale local base would
+    // count upstream skill edits as changes made in this branch.
     const modified = new Set<string>();
     for (const cmd of commands) {
       try {
@@ -313,6 +314,7 @@ function getModifiedSkillFiles(baseBranch = 'main', source: ChangeSource = 'comm
         for (const p of output.trim().split('\n').filter(Boolean)) {
           modified.add(p.replace(/^\.claude\/skills\//, ''));
         }
+        if (source === 'committed') break;
       } catch {
         continue;
       }
@@ -786,9 +788,13 @@ function generateSuggestions(
 
     for (const [dir, dirFiles] of byDir) {
       if (dirFiles.length >= 2) {
-        const skillName = dir.split('/').pop() || 'unknown';
+        // Name from the whole path: `apps/web/src` and `packages/ui/src` must
+        // not both become `src` and overwrite each other.
+        const skillName = dir.replace(/\//g, '-');
         const domain = inferDomain(dir, rules);
         const skillPath = newSkillPath(domain, skillName);
+        // Never suggest a scaffold that would overwrite an existing skill.
+        if (existsSync(join(skillsDir, skillPath, 'SKILL.md'))) continue;
 
         suggestions.push({
           type: 'new',
