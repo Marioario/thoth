@@ -527,6 +527,18 @@ function inferDomain(filePath, rules) {
     // Fallback: use first path segment (e.g., "frontend/src/..." → "frontend")
     return filePath.split('/')[0] || 'other';
 }
+/**
+ * The directory a new-skill suggestion covers (up to three segments) and its skill name. Named
+ * from the whole path so `apps/web/src` and `packages/ui/src` don't both become `src` and
+ * overwrite each other. Returns null for repo-root files.
+ */
+function newSkillTarget(filePath) {
+    const parent = dirname(filePath);
+    if (parent === '.')
+        return null;
+    const dir = parent.split('/').slice(0, 3).join('/');
+    return { dir, skillName: dir.replace(/\//g, '-') };
+}
 function newSkillPath(domain, skillName) {
     return existsSync(join(SKILLS_DIR, domain, 'SKILL.md')) ? `${domain}/${skillName}` : skillName;
 }
@@ -599,20 +611,17 @@ function generateSuggestions(files, patterns, rules, source) {
     if (uncoveredFiles.length >= 3) {
         const byDir = new Map();
         for (const file of uncoveredFiles) {
-            const dir = dirname(file.path);
-            if (dir === '.')
+            const target = newSkillTarget(file.path);
+            if (!target)
                 continue;
-            const relevantDir = dir.split('/').slice(0, 3).join('/');
-            if (!byDir.has(relevantDir)) {
-                byDir.set(relevantDir, []);
+            if (!byDir.has(target.dir)) {
+                byDir.set(target.dir, []);
             }
-            byDir.get(relevantDir).push(file);
+            byDir.get(target.dir).push(file);
         }
         for (const [dir, dirFiles] of byDir) {
             if (dirFiles.length >= 2) {
-                // Name from the whole path: `apps/web/src` and `packages/ui/src` must
-                // not both become `src` and overwrite each other.
-                const skillName = dir.replace(/\//g, '-');
+                const skillName = newSkillTarget(dirFiles[0].path).skillName;
                 const domain = inferDomain(dir, rules);
                 const skillPath = newSkillPath(domain, skillName);
                 // Never suggest a scaffold that would overwrite an existing skill.
@@ -670,12 +679,15 @@ EOF`,
         }
         // Built-in: significant-directory-change → suggest new skill
         if (pattern.pattern === 'significant-directory-change') {
-            const dir = pattern.files[0]?.split('/').slice(0, 3).join('/');
-            if (dir && !suggestions.some((s) => s.skillName === dir.split('/').pop())) {
+            const target = pattern.files[0] ? newSkillTarget(pattern.files[0]) : null;
+            const domain = target ? inferDomain(target.dir, rules) : '';
+            const exists = target && existsSync(join(SKILLS_DIR, newSkillPath(domain, target.skillName), 'SKILL.md'));
+            if (target && !exists && !suggestions.some((s) => s.skillName === target.skillName)) {
+                const { dir, skillName } = target;
                 suggestions.push({
                     type: 'new',
-                    skillName: dir.split('/').pop() || 'new-feature',
-                    domain: inferDomain(dir, rules),
+                    skillName,
+                    domain,
                     reason: pattern.description,
                     suggestedContent: [`Major development in ${dir} - consider creating a dedicated skill`],
                 });
