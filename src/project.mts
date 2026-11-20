@@ -41,7 +41,8 @@ export let SKILL_RULES_PATH: string = join(SKILLS_DIR, 'skill-rules.json');
  */
 export function useProjectFrom(dir: string | undefined): void {
   if (!dir) return;
-  PROJECT_DIR = resolveRoot(dir);
+  // No CLAUDE_PROJECT_DIR fallback here: it's exactly the stale directory this overrides.
+  PROJECT_DIR = gitRoot(dir) ?? dir;
   SKILLS_DIR = join(PROJECT_DIR, '.claude', 'skills');
   SKILL_RULES_PATH = join(SKILLS_DIR, 'skill-rules.json');
 }

@@ -60,7 +60,9 @@ function getUntrackedFiles(projectDir) {
             try {
                 const full = join(projectDir, p);
                 if (statSync(full).size <= 1_000_000) {
-                    additions = readFileSync(full, 'utf-8').split('\n').length;
+                    const text = readFileSync(full, 'utf-8');
+                    // Count lines like git: a trailing newline doesn't start a new line.
+                    additions = text.split('\n').length - (text === '' || text.endsWith('\n') ? 1 : 0);
                 }
             }
             catch {
@@ -108,11 +110,10 @@ function getChangedFiles(baseBranch = 'main') {
                     break;
             }
         }
-        if (output?.trim()) {
-            const files = parseNumstat(output);
-            if (files.length > 0)
-                return { files, source: 'committed' };
-        }
+        // Decide on the raw diff, before parseNumstat drops `.claude/` paths: a
+        // branch that only commits skill edits still has committed work.
+        if (output?.trim())
+            return { files: parseNumstat(output), source: 'committed' };
         // Nothing committed to analyze — fall back to the working tree so an
         // in-progress change doesn't report a clean bill of health.
         let working = [];
@@ -318,11 +319,17 @@ function detectStaleDocs(files, rules, source) {
     }
     const suggestions = [];
     for (const doc of rules.docs) {
+        if (!Array.isArray(doc.watch)) {
+            console.error(`Ignoring docs entry without a watch array: ${doc.path}`);
+            continue;
+        }
+        // Git reports repo-relative paths; accept `./Docs/x.md` or `/Docs/x.md` in config.
+        const docPath = doc.path.replace(/^(\.\/|\/)+/, '');
         // Doc already updated in this branch — nothing to nag about.
-        if (changedPaths.has(doc.path))
+        if (changedPaths.has(docPath))
             continue;
         const triggeringFiles = files
-            .filter((f) => f.path !== doc.path)
+            .filter((f) => f.path !== docPath)
             .filter((f) => doc.watch.some((p) => matchesGlobPattern(f.path, p)))
             .filter((f) => {
             if (doc.anyChange || !publicApi)
@@ -339,7 +346,7 @@ function detectStaleDocs(files, rules, source) {
             docPath: doc.path,
             package: doc.package,
             description: doc.description,
-            exists: existsSync(join(projectDir, doc.path)),
+            exists: existsSync(join(projectDir, docPath)),
             triggeringFiles,
         });
     }
