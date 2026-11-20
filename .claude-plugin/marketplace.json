@@ -1,0 +1,14 @@
+{
+  "name": "thoth",
+  "owner": {
+    "name": "Maestro"
+  },
+  "description": "Thoth: living knowledge and pre-PR review for Claude Code.",
+  "plugins": [
+    {
+      "name": "thoth",
+      "source": "./plugin",
+      "description": "Skill activation, skill evolution, and a review gate before every PR."
+    }
+  ]
+}

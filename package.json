@@ -1,20 +1,21 @@
 {
   "name": "@marioario/thoth",
-  "version": "0.2.0",
+  "version": "0.3.0",
+  "private": true,
   "description": "Living knowledge for your codebase. Skill activation and evolution system for Claude Code.",
   "repository": {
     "type": "git",
     "url": "https://github.com/Marioario/thoth.git"
   },
-  "publishConfig": {
-    "registry": "https://npm.pkg.github.com"
-  },
   "license": "MIT",
-  "bin": {
-    "thoth": "./init.sh"
+  "type": "module",
+  "scripts": {
+    "build": "tsc",
+    "check": "tsc --noEmit",
+    "validate": "claude plugin validate . && claude plugin validate ./plugin"
   },
-  "files": [
-    "init.sh",
-    "template/**"
-  ]
+  "devDependencies": {
+    "@types/node": "^24.0.0",
+    "typescript": "^5.9.0"
+  }
 }

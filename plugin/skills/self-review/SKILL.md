@@ -10,8 +10,8 @@ this work runs on your own Claude account instead of a paid review bot.
 ## 1. Scope the change
 
 - Base branch: `$ARGUMENTS` if given; otherwise `config.baseBranch` in
-  `.claude/skills/skill-rules.json` (the base `/check-skills` uses); otherwise the repo's default
-  branch (`gh repo view --json defaultBranchRef -q .defaultBranchRef.name`).
+  `.claude/skills/skill-rules.json` (the base `/thoth:check-skills` uses); otherwise the repo's
+  default branch (`gh repo view --json defaultBranchRef -q .defaultBranchRef.name`).
 - Run `git fetch origin <base>`, then `git diff origin/<base>...HEAD --stat` and `git status`.
   Uncommitted changes are part of the review; say if there are any.
 - If there is nothing to review, say so and stop.

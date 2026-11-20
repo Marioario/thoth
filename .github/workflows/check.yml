@@ -1,0 +1,25 @@
+name: check
+
+on:
+  pull_request:
+  push:
+    branches: [main]
+
+jobs:
+  build:
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 24
+      - run: npm ci
+      - run: npm run build
+      - name: Compiled output matches source
+        run: |
+          if [ -n "$(git status --porcelain -- plugin/dist)" ]; then
+            git status --short -- plugin/dist
+            git diff -- plugin/dist
+            echo "plugin/dist is stale: run 'npm run build' and commit the output." >&2
+            exit 1
+          fi

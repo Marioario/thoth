@@ -1,43 +1,62 @@
 # Thoth
 
-Living knowledge for your codebase. A skill activation and evolution system for [Claude Code](https://claude.com/claude-code).
-
-Thoth gives Claude institutional memory about your codebase — architecture decisions, code patterns, and gotchas — and keeps that knowledge in sync as the code evolves.
+Living knowledge for your codebase. A [Claude Code](https://claude.com/claude-code) plugin that
+gives Claude institutional memory about each repository (architecture decisions, code patterns,
+gotchas), keeps that knowledge in sync as the code evolves, and reviews every PR before it opens.
 
 ## What It Does
 
-**Skill Activation** — When you prompt Claude, Thoth detects relevant skills based on keywords, intent patterns, and file paths, then loads the right context before responding.
+**Skill Activation**: when you prompt Claude, Thoth matches the prompt against the repository's
+skill rules (keywords, intent patterns, file paths) and points Claude at the right skill files.
 
-**Skill Evolution** — Before PRs, Thoth analyzes your branch's changes and suggests skill updates or new skills to keep documentation in sync with code.
+**Skill Evolution**: `/thoth:check-skills` analyzes the branch's changes and suggests skill
+updates, new skills, and doc updates, so documentation keeps up with the code.
 
-**Pre-PR Gate** — Blocks `gh pr create` until you've run `/check-skills` and `/self-review`, so
-skills stay current and every PR is reviewed on the author's own Claude account before anyone
-else reads it. See [Self-review before PRs](#self-review-before-prs).
+**Pre-PR Gate**: blocks `gh pr create` until Claude has run `/thoth:self-review`, and
+`/thoth:check-skills` too in repositories that have skill rules. See
+[Self-review before PRs](#self-review-before-prs).
 
-## Quick Start
+Thoth is one plugin for every repository. The engine lives in the plugin; each repository keeps
+only its own `.claude/skills/` folder.
 
-```bash
-# Clone Thoth
-git clone https://github.com/marioario/thoth.git /tmp/thoth
+## Install
 
-# From your repo root:
-cd /path/to/your-repo
-bash /tmp/thoth/init.sh
+**For an organization** (recommended): an Owner adds this under claude.ai → Organization
+settings → Claude Code → Managed settings. Everyone signed in to the organization gets Thoth at
+their next session start and can't turn it off.
+
+```json
+{
+  "extraKnownMarketplaces": {
+    "thoth": {
+      "source": { "source": "github", "repo": "Marioario/thoth" },
+      "autoUpdate": true
+    }
+  },
+  "enabledPlugins": { "thoth@thoth": true }
+}
 ```
 
-This will:
-1. Create `.claude/hooks/`, `.claude/skills/`, `.claude/commands/`
-2. Install the hook scripts and TypeScript engine
-3. Install the commands
-4. Create a starter `skill-rules.json` (or skip if one exists)
-5. Configure hooks in `.claude/settings.json`
-6. Run `npm install` for hook dependencies
+**For yourself**:
 
-## Configuration
+```bash
+claude plugin marketplace add Marioario/thoth
+claude plugin install thoth@thoth
+```
+
+Or inside Claude Code: `/plugin install thoth --marketplace Marioario/thoth` (Claude Code
+2.1.275 or later).
+
+## Set Up a Repository
+
+The review gate works everywhere with no setup. Skill activation and `/thoth:check-skills` need
+a `.claude/skills/skill-rules.json`; without one, Thoth stays silent in that repository.
+
+Run `/thoth:setup` in the repository. It creates a starter `skill-rules.json` and
+`SKILL-AUTHORING.md` under `.claude/skills/` and proposes a first set of domains. Then write the
+skill files and commit `.claude/skills/`.
 
 ### skill-rules.json
-
-The central config file at `.claude/skills/skill-rules.json` controls everything:
 
 ```json
 {
@@ -78,19 +97,15 @@ The central config file at `.claude/skills/skill-rules.json` controls everything
 }
 ```
 
-### Domains
+**Domains** are top-level groupings (e.g. `backend`, `frontend`, `infrastructure`). Each has:
+- `path`: the skill file to load, relative to `.claude/skills/`
+- `promptTriggers.keywords`: words that activate it
+- `promptTriggers.intentPatterns`: regex patterns for intent matching
+- `fileTriggers.pathPatterns`: glob patterns for file-based matching
+- `skills`: specific skills within the domain
+- `subdomains`: nested domains (e.g. `frontend/studio`)
 
-Top-level groupings (e.g., `backend`, `frontend`, `infrastructure`). Each domain has:
-- `path` — Skill file to load (relative to `.claude/skills/`)
-- `promptTriggers.keywords` — Words that activate this skill
-- `promptTriggers.intentPatterns` — Regex patterns for intent matching
-- `fileTriggers.pathPatterns` — Glob patterns for file-based activation
-- `skills` — Specific skills within this domain
-- `subdomains` — Nested domains (e.g., `frontend/studio`)
-
-### Evolution Patterns
-
-In `config.evolutionPatterns`, define patterns that the evolution engine detects:
+**Evolution patterns** in `config.evolutionPatterns` flag kinds of change worth a skill update:
 
 | Field | Required | Description |
 |-------|----------|-------------|
@@ -101,80 +116,89 @@ In `config.evolutionPatterns`, define patterns that the evolution engine detects
 | `minFiles` | No | Minimum files to trigger (default: 1) |
 | `suggestSkill` | No | Skill to suggest updating |
 
-Two universal patterns are always active:
-- **significant-directory-change** — 3+ files and 100+ lines in same directory
-- **significant-new-files** — New files with 50+ lines
+Two patterns are always active: **significant-directory-change** (3+ files and 100+ lines in one
+directory) and **significant-new-files** (new files with 50+ lines).
 
-## Writing Skills
+### Optional: keep docs in step with code
 
-See `.claude/skills/SKILL-AUTHORING.md` after installation for the full guide. In short:
+List docs under `docs` and `/thoth:check-skills` flags each one when the code it describes
+changed in the branch but the doc didn't:
 
-1. Create a `.md` file in `.claude/skills/your-domain/`
-2. Document architecture, patterns, key files, and gotchas
-3. Register it in `skill-rules.json` with appropriate triggers
-4. Run `/check-skills` to verify coverage
+```json
+{
+  "config": { "publicApiPattern": "\\b(public|open)\\s|@_spi" },
+  "docs": [
+    {
+      "path": "packages/widgets/docs/USAGE.md",
+      "package": "widgets",
+      "description": "How apps embed and configure widgets",
+      "watch": ["packages/widgets/src/**"]
+    }
+  ]
+}
+```
 
-## Commands
+- `watch`: glob patterns for the code the doc describes.
+- `config.publicApiPattern`: optional regex for a changed line that alters a public API. When
+  set, a doc is flagged only for such changes. The example matches Swift's `public`, `open` and
+  `@_spi`. When unset, any change to a watched file counts.
+- `anyChange: true` on an entry flags it on any change, even with `publicApiPattern` set.
 
-- `/check-skills` — Run skill evolution analysis on current branch
-- `/self-review [base-branch]` — Review the branch in a subagent and fix what it confirms
+### Optional: repository-specific check steps
+
+Put extra instructions for `/thoth:check-skills` in `.claude/skills/check-skills.local.md`. The
+skill reads and follows that file in this repository only.
 
 ## Self-review before PRs
 
 Review work runs on each developer's own Claude account rather than on a paid review bot.
 
-Before opening a PR, the pre-PR gate makes Claude run `/self-review`. It reviews the branch's
+Before opening a PR, the gate makes Claude run `/thoth:self-review`. It reviews the branch's
 diff in a subagent, which doesn't see the author's reasoning, so the read isn't anchored on it.
-Claude fixes what it confirms, and declined findings go in the PR description.
+Claude fixes what it confirms, asks whether to run another round after any fixes, and puts
+declined findings in the PR description.
 
 The subagent is a `code-reviewer` agent if one is available, otherwise a general-purpose agent
 running Claude Code's built-in `/code-review`. To use your own reviewer, put an agent named
-`code-reviewer` in `~/.claude/agents/` (just for you) or `.claude/agents/` (for the whole repo).
-Thoth doesn't install one, so `--update` never touches it.
+`code-reviewer` in `~/.claude/agents/` (just for you) or `.claude/agents/` (for the repository).
 
-When the gate blocks `gh pr create`, Claude runs both checks and retries the command with
-`# pre-pr-checks-done` appended as a bash comment. The `# skip-skill-check` marker from earlier
-versions no longer passes the gate.
+When the gate blocks `gh pr create`, Claude runs the checks, commits any fixes, and retries the
+command with `# pre-pr-checks-done` appended as a bash comment. The gate only starts for `gh pr`
+commands, and if it fails, the command is blocked rather than let through.
 
-## What Gets Installed
+## Migrating from the copied install
 
-```
-.claude/
-├── hooks/
-│   ├── skill-activation.ts    # Prompt → skill matching engine
-│   ├── skill-activation.sh    # Shell wrapper
-│   ├── skill-evolution.ts     # Change → suggestion engine
-│   ├── skill-evolution.sh     # Shell wrapper
-│   ├── pre-pr-check.sh        # PR gate hook
-│   └── package.json           # Hook dependencies
-├── skills/
-│   ├── skill-rules.json       # Central config
-│   ├── SKILL-AUTHORING.md     # Authoring guide
-│   └── your-domain/           # Your skill files
-│       └── SKILL.md
-├── commands/
-│   ├── check-skills.md        # /check-skills command
-│   └── self-review.md         # /self-review command
-└── settings.json              # Hook configuration
-```
+Earlier versions copied Thoth into each repository with `init.sh`. Once the plugin is enabled,
+remove the copy so its hooks don't run twice:
 
-## Updating
+1. Delete the files `init.sh` copied into `.claude/hooks/`: `skill-activation.ts`,
+   `skill-activation.sh`, `skill-evolution.ts`, `skill-evolution.sh`, `pre-pr-check.sh`,
+   `package.json`, `package-lock.json`, `.thoth-version` and `node_modules/`. Keep any hooks of
+   your own.
+2. Remove Thoth's `UserPromptSubmit` and `PreToolUse` entries from `.claude/settings.json`.
+3. Delete `.claude/commands/check-skills.md` and `.claude/commands/self-review.md`.
+4. Keep `.claude/skills/`. If the copy had local engine changes, check they're covered by the
+   plugin or by the optional settings above.
+5. Update docs that mention `/check-skills` or `/self-review` to `/thoth:check-skills` and
+   `/thoth:self-review`.
 
-To update Thoth's engine and commands (without touching your config):
+## Development
 
 ```bash
-bash /path/to/thoth/init.sh --update
+npm install
+npm run build      # compiles src/*.mts to plugin/dist/; commit the output
+npm run validate   # claude plugin validate for the marketplace and the plugin
+claude --plugin-dir ./plugin   # try the working copy in a session
 ```
 
-This overwrites the TypeScript engine, shell wrappers, and Thoth's commands, but preserves your
-`skill-rules.json`, skill files, and `settings.json`. A command file that differs from Thoth's
-(including your own file with the same name) is replaced, and the old one is saved next to it as
-`.bak`.
+The engine is TypeScript in `src/`, compiled to plain JavaScript in `plugin/dist/` so the plugin
+needs no install step. CI fails if `plugin/dist/` doesn't match `src/`.
+
+`plugin.json` has no `version`, so each commit to `main` that changes `plugin/` is a release:
+installs with auto-update pick it up at their next check.
 
 ## Requirements
 
-- Node.js 18+
-- Git repository
-- Claude Code CLI
-- `jq` (without it the pre-PR gate can't read commands and lets everything through)
-- `gh` (GitHub CLI), used by `/self-review` to find the default branch
+- Claude Code 2.1.295 or later (the gate uses `onFailure: "block"`)
+- Node.js 18 or later on the `PATH`
+- Git, and `gh` (GitHub CLI) for `/thoth:self-review`
